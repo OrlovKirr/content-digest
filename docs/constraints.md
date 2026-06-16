@@ -2,7 +2,8 @@
 
 ## From project scope (Step 1)
 
-- No backend, API, server, or database — this is a frontend-only learning playground.
+- ~~No backend, API, server, or database — this is a frontend-only learning playground.~~
+  **Amended by [ADR 002](decisions/002-content-digest-architecture.md):** a single **thin backend proxy** is permitted **solely** for article-text extraction and Claude API calls (so the API key never reaches the browser). No general-purpose backend, no database — board state persists in `localStorage`. The frontend remains the primary app and talks only to `POST /api/digest`.
 - No authentication or user accounts.
 - No client-side routing (single page).
 - No CSS framework, theming, or design system beyond minimal inline styles.

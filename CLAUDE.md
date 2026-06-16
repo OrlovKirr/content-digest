@@ -38,6 +38,7 @@ Governance files live at the repo root and **never** inside `app/`. App code liv
 - [docs/requirements/overview.md](docs/requirements/overview.md) — goal, user, success criteria
 - [docs/requirements/feature-001-hello-world.md](docs/requirements/feature-001-hello-world.md) — Feature 001 spec
 - [docs/decisions/001-agent-structure.md](docs/decisions/001-agent-structure.md) — ADR: root-vs-`app/` split
+- [docs/decisions/002-content-digest-architecture.md](docs/decisions/002-content-digest-architecture.md) — ADR: Content Digest thin backend proxy
 - [docs/constraints.md](docs/constraints.md) — what NOT to do
 - [docs/retrospectives/](docs/retrospectives/) — self-improvement log (see below)
 
