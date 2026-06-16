@@ -37,6 +37,8 @@ Governance files live at the repo root and **never** inside `app/`. App code liv
 
 - [docs/requirements/overview.md](docs/requirements/overview.md) — goal, user, success criteria
 - [docs/requirements/feature-001-hello-world.md](docs/requirements/feature-001-hello-world.md) — Feature 001 spec
+- [docs/requirements/feature-002-digest-pipeline.md](docs/requirements/feature-002-digest-pipeline.md) — Feature 002 spec (mock digest pipeline)
+- [docs/requirements/feature-003-board.md](docs/requirements/feature-003-board.md) — Feature 003 spec (board + sections)
 - [docs/decisions/001-agent-structure.md](docs/decisions/001-agent-structure.md) — ADR: root-vs-`app/` split
 - [docs/decisions/002-content-digest-architecture.md](docs/decisions/002-content-digest-architecture.md) — ADR: Content Digest thin backend proxy
 - [docs/constraints.md](docs/constraints.md) — what NOT to do
@@ -44,7 +46,7 @@ Governance files live at the repo root and **never** inside `app/`. App code liv
 
 ## Current state
 
-Hello world greeting rendered; no features specced beyond Feature 001.
+**Content Digest** is the app. Paste an article (URL + text) → the digester produces a summary, key points, tags, and a suggested category → the result lands as a card on a **board with sections by topic**, persisted in `localStorage`. The AI is a deterministic **mock** (`app/src/digest/mockDigester.ts`) behind a `Digester` interface; real fetch + Claude is Feature 004 (per [ADR 002](docs/decisions/002-content-digest-architecture.md)). Features 001–003 shipped.
 
 ## Dev server
 
@@ -73,6 +75,8 @@ All from the repo root:
 Retrospectives live under [docs/retrospectives/](docs/retrospectives/):
 
 - [001-hello-world.md](docs/retrospectives/001-hello-world.md) — bootstrap + Feature 001
+- [002-digest-pipeline.md](docs/retrospectives/002-digest-pipeline.md) — mock digest pipeline
+- [003-board.md](docs/retrospectives/003-board.md) — board with topic sections
 
 ## Escalation rules
 
