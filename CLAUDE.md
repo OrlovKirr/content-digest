@@ -8,13 +8,15 @@ A learning playground — a sandbox to practice agentic engineering with Vite + 
 new-project-ai/                  ← repo root (git lives here)
   CLAUDE.md                      ← entry point for Claude (this file)
   README.md                      ← entry point for humans
-  package.json                   ← root pass-through scripts (npm run dev, etc.)
+  package.json                   ← root pass-through scripts (npm run dev runs web + api)
+  scripts/dev.mjs                ← zero-dep launcher for both dev servers
   .gitignore .editorconfig .nvmrc .env.example
   docs/                          ← requirements / decisions / retrospectives / constraints
-  app/                           ← all Vite + React + TS code lives here
+  app/                           ← Vite + React + TS frontend
+  server/                        ← thin Hono backend proxy (fetch + Claude), per ADR 002/003
 ```
 
-Governance files live at the repo root and **never** inside `app/`. App code lives inside `app/` and **never** at the repo root.
+Governance files live at the repo root and **never** inside a package. Application code lives inside `app/` (frontend) and `server/` (backend proxy), **never** loose at the repo root.
 
 ## How to work in this repo
 
@@ -29,7 +31,7 @@ Governance files live at the repo root and **never** inside `app/`. App code liv
 > 7. Keep `CLAUDE.md`'s "Current state" section updated after every merged change.
 > 8. Dev server lives at `http://127.0.0.1:<DEV_PORT>/` where `DEV_PORT` is recorded in `.dev-port` (defaults to 5173, probed for a free port at bootstrap time). Always read the current port from `.dev-port` instead of hardcoding 5173. `strictPort: true` is set so Vite never silently drifts.
 > 9. **Retrospective after every feature.** Once a feature is green and committed, write `docs/retrospectives/NNN-<slug>.md` capturing what worked, what didn't, and concrete workflow changes. If the retro proposes a change, **edit `CLAUDE.md` (working agreement, constraints, or links) in the same session** — don't defer. Add a new ADR if the change is architectural. Then update the "Self-improvement log" section to link the new retro. Commit as `chore(retro): NNN-<slug>`.
-> 10. **Layout discipline.** Governance files (`CLAUDE.md`, `README.md`, `docs/**`) live at the repo root and never inside `app/`. App code lives inside `app/` and never at the repo root. Root-level config (CI, dotfiles) is allowed; app code at root is not.
+> 10. **Layout discipline.** Governance files (`CLAUDE.md`, `README.md`, `docs/**`) live at the repo root. Application code lives inside `app/` (frontend) or `server/` (backend proxy), never loose at the repo root. Root-level config and small launcher scripts (`scripts/`, CI, dotfiles) are allowed; package code at root is not.
 > 11. **Conventional Commits.** Format: `<type>(<scope>): <subject>`. Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `style`. Retros are committed as `chore(retro): NNN-<slug>`. ADR additions as `docs(adr): NNN-<slug>`.
 > 12. **CLAUDE.md ≤ ~200 lines.** It is a router, not an encyclopedia. If a retro update would push it past ~200 lines, move detail into a linked file under `docs/` and link from `CLAUDE.md` instead. Same applies to constraints.md — split into topical files once over ~150 lines.
 
@@ -39,35 +41,39 @@ Governance files live at the repo root and **never** inside `app/`. App code liv
 - [docs/requirements/feature-001-hello-world.md](docs/requirements/feature-001-hello-world.md) — Feature 001 spec
 - [docs/requirements/feature-002-digest-pipeline.md](docs/requirements/feature-002-digest-pipeline.md) — Feature 002 spec (mock digest pipeline)
 - [docs/requirements/feature-003-board.md](docs/requirements/feature-003-board.md) — Feature 003 spec (board + sections)
+- [docs/requirements/feature-004-backend-claude.md](docs/requirements/feature-004-backend-claude.md) — Feature 004 spec (backend + Claude)
 - [docs/decisions/001-agent-structure.md](docs/decisions/001-agent-structure.md) — ADR: root-vs-`app/` split
 - [docs/decisions/002-content-digest-architecture.md](docs/decisions/002-content-digest-architecture.md) — ADR: Content Digest thin backend proxy
+- [docs/decisions/003-backend-dependencies.md](docs/decisions/003-backend-dependencies.md) — ADR: backend deps (Hono, Anthropic SDK, extractor; Opus 4.8)
 - [docs/constraints.md](docs/constraints.md) — what NOT to do
 - [docs/retrospectives/](docs/retrospectives/) — self-improvement log (see below)
 
 ## Current state
 
-**Content Digest** is the app. Paste an article (URL + text) → the digester produces a summary, key points, tags, and a suggested category → the result lands as a card on a **board with sections by topic**, persisted in `localStorage`. The AI is a deterministic **mock** (`app/src/digest/mockDigester.ts`) behind a `Digester` interface; real fetch + Claude is Feature 004 (per [ADR 002](docs/decisions/002-content-digest-architecture.md)). Features 001–003 shipped.
+**Content Digest** is the app. Paste an article URL (or text) → the **`server/` backend** fetches + extracts the article and digests it with Claude `claude-opus-4-8` → summary, key points, tags, suggested category → the result lands as a card on a **board with sections by topic**, persisted in `localStorage`. The frontend talks only to `POST /api/digest` (Vite-proxied) via an `HttpDigester`; when the backend is down or `ANTHROPIC_API_KEY` is unset, a deterministic **mock** (`app/src/digest/mockDigester.ts` / `server/src/digest/fallback.ts`) keeps it working. Features 001–004 shipped. The live Opus call is wired + typechecked but unverified until a key is set in `server/.env`.
 
 ## Dev server
 
-From the repo root: `npm run dev` → `http://127.0.0.1:5173/` (port read from `.dev-port`, defaults to 5173).
+From the repo root: `npm run dev` starts **both** servers — Vite frontend on `http://127.0.0.1:5173/` and the Hono backend on `:8787` (Vite proxies `/api` → `:8787`). To enable real Claude digests, copy `server/.env.example` → `server/.env` and set `ANTHROPIC_API_KEY`; without it the backend uses the deterministic fallback.
 
 ## Common commands
 
 All from the repo root:
 
-- `npm run dev` — start the Vite dev server
-- `npm run build` — type-check and build for production
-- `npm run preview` — serve the production build
-- `npm run test` — run vitest in watch mode
-- `npm run test:run` — run vitest once (CI mode)
-- `npm run lint` — eslint
-- `npm run format` — prettier --write
+- `npm run dev` — start frontend + backend together (zero-dep `scripts/dev.mjs`)
+- `npm run dev:web` / `npm run dev:server` — start just one
+- `npm run build` — type-check and build the frontend for production
+- `npm run test:run` — run vitest once across `app/` + `server/` (CI mode)
+- `npm run typecheck` — `tsc --noEmit` for `server/`
+- `npm run lint` — eslint (app); `npm run format` — prettier --write
+- `npm run setup` — install deps for both packages
 
 ## Critical files
 
-- [app/vite.config.ts](app/vite.config.ts) — dev/preview ports, `strictPort`, `@` path alias
-- [app/vitest.config.ts](app/vitest.config.ts) — test runner config (`node` environment)
+- [app/vite.config.ts](app/vite.config.ts) — dev/preview ports, `strictPort`, `/api` proxy, `@` path alias
+- [app/src/digest/httpDigester.ts](app/src/digest/httpDigester.ts) — frontend → `/api/digest`, with mock fallback
+- [server/src/server.ts](server/src/server.ts) — Hono app (`POST /api/digest`)
+- [server/src/digest/claude.ts](server/src/digest/claude.ts) — Claude call + model id (one-line swap)
 - [docs/constraints.md](docs/constraints.md) — guardrails
 
 ## Self-improvement log
@@ -77,6 +83,7 @@ Retrospectives live under [docs/retrospectives/](docs/retrospectives/):
 - [001-hello-world.md](docs/retrospectives/001-hello-world.md) — bootstrap + Feature 001
 - [002-digest-pipeline.md](docs/retrospectives/002-digest-pipeline.md) — mock digest pipeline
 - [003-board.md](docs/retrospectives/003-board.md) — board with topic sections
+- [004-backend-claude.md](docs/retrospectives/004-backend-claude.md) — backend proxy + real fetch/Claude
 
 ## Escalation rules
 
