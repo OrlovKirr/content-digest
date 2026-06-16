@@ -69,7 +69,9 @@ All from the repo root:
 
 ## Self-improvement log
 
-Retrospectives live under [docs/retrospectives/](docs/retrospectives/). (None yet — populated after each feature.)
+Retrospectives live under [docs/retrospectives/](docs/retrospectives/):
+
+- [001-hello-world.md](docs/retrospectives/001-hello-world.md) — bootstrap + Feature 001
 
 ## Escalation rules
 
