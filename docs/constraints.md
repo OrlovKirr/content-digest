@@ -21,3 +21,4 @@
 ## Tooling notes
 
 - The `lint` script uses `eslint .` (flat config restricts to `*.ts`/`*.tsx` via `files`). ESLint 10 removed the `--ext` flag, so it is intentionally omitted.
+- Do not add `baseUrl` to any `tsconfig*.json`. TypeScript 6 (shipped by the current Vite template) deprecates it and `tsc -b` errors out. The `@/*` path alias resolves relative to the tsconfig without `baseUrl`.
