@@ -31,8 +31,8 @@ export function DigestForm({ onSubmit }: Props) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (text.trim().length === 0) {
-      setError('Paste the article text to digest.');
+    if (url.trim().length === 0 && text.trim().length === 0) {
+      setError('Paste an article URL or the article text.');
       return;
     }
     setError(null);
@@ -52,13 +52,13 @@ export function DigestForm({ onSubmit }: Props) {
     <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.6rem', margin: '1.5rem 0' }}>
       <input
         type="url"
-        placeholder="https://example.com/article  (optional — auto-fetch arrives in Feature 004)"
+        placeholder="https://example.com/article  (the server fetches & extracts it)"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         style={field}
       />
       <textarea
-        placeholder="Paste the article text here…"
+        placeholder="…or paste the article text directly"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={6}

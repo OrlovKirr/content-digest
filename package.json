@@ -2,13 +2,16 @@
   "name": "new-project-ai",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix app run dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "npm --prefix app run dev",
+    "dev:server": "npm --prefix server run dev",
     "build": "npm --prefix app run build",
     "preview": "npm --prefix app run preview",
     "test": "npm --prefix app run test",
-    "test:run": "npm --prefix app run test:run",
+    "test:run": "npm --prefix app run test:run && npm --prefix server run test:run",
+    "typecheck": "npm --prefix server run typecheck",
     "lint": "npm --prefix app run lint",
     "format": "npm --prefix app run format",
-    "setup": "npm install --prefix app"
+    "setup": "npm install --prefix app && npm install --prefix server"
   }
 }

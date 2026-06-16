@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react';
-import { createMockDigester } from './digest/mockDigester';
+import { httpDigest } from './digest/httpDigester';
 import type { Card } from './board/types';
 import { loadBoard, saveBoard } from './board/storage';
 import { deriveTitle } from './board/title';
 import { DigestForm } from './components/DigestForm';
 import { BoardView } from './components/BoardView';
-
-// Feature 002/003 run on the deterministic mock; Feature 004 swaps in an
-// HTTP-backed Digester (real fetch + Claude) behind this same interface.
-const digester = createMockDigester();
 
 function newId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -25,7 +21,7 @@ export default function App() {
   }, [cards]);
 
   async function handleSubmit(input: { url: string; text: string }) {
-    const digest = await digester.digest({ text: input.text, title: input.url || undefined });
+    const digest = await httpDigest({ url: input.url, text: input.text });
     const card: Card = {
       id: newId(),
       url: input.url.trim(),
