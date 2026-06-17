@@ -9,6 +9,7 @@ database — insert_card() synthesizes a Card in memory (not persisted) and
 fetch_cards() returns []. This mirrors the OpenRouter-key-absent fallback in
 digest.py and keeps dev/tests runnable with no DB.
 """
+import asyncio
 import os
 from pathlib import Path
 from typing import List, Optional
@@ -20,6 +21,7 @@ from card import INSERT_COLUMNS, Card, insert_values, row_to_card, synthesize_ca
 _SELECT_COLUMNS = "id, url, title, summary, key_points, tags, category, created_at"
 
 _pool: Optional[asyncpg.Pool] = None
+_pool_lock = asyncio.Lock()
 
 
 def database_url() -> Optional[str]:
@@ -28,16 +30,24 @@ def database_url() -> Optional[str]:
 
 
 async def get_pool() -> asyncpg.Pool:
-    """Return the process-wide pool, creating it (and the schema) on first use."""
+    """Return the process-wide pool, creating it (and the schema) on first use.
+
+    Double-checked under a lock so concurrent first requests (FastAPI serves them
+    on one event loop) can't each create a pool and orphan one.
+    """
     global _pool
-    if _pool is None:
-        url = database_url()
-        if not url:
-            raise RuntimeError("DATABASE_URL is not set")
-        _pool = await asyncpg.create_pool(url, min_size=0, max_size=5)
-        ddl = Path(__file__).with_name("schema.sql").read_text()
-        async with _pool.acquire() as conn:
-            await conn.execute(ddl)
+    if _pool is not None:
+        return _pool
+    async with _pool_lock:
+        if _pool is None:
+            url = database_url()
+            if not url:
+                raise RuntimeError("DATABASE_URL is not set")
+            pool = await asyncpg.create_pool(url, min_size=0, max_size=5)
+            ddl = Path(__file__).with_name("schema.sql").read_text()
+            async with pool.acquire() as conn:
+                await conn.execute(ddl)
+            _pool = pool
     return _pool
 
 
@@ -66,7 +76,8 @@ async def fetch_cards() -> List[Card]:
     if not database_url():
         return []
 
-    query = f"SELECT {_SELECT_COLUMNS} FROM cards ORDER BY created_at DESC"
+    # id DESC breaks ties when two cards share a created_at (sub-µs inserts).
+    query = f"SELECT {_SELECT_COLUMNS} FROM cards ORDER BY created_at DESC, id DESC"
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(query)
