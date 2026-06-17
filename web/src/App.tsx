@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { PLACEHOLDER_CARDS } from './board/placeholders';
+import type { Card } from './board/types';
+import { getCards, postDigest } from './lib/api';
 import { DigestForm } from './components/DigestForm';
 import { BoardView } from './components/BoardView';
 
@@ -8,19 +9,35 @@ const noticeStyle: CSSProperties = {
   margin: '0 0 1.5rem',
   padding: '0.6rem 0.8rem',
   borderRadius: 8,
-  background: '#eff6ff',
-  border: '1px solid #bfdbfe',
-  color: '#1e40af',
+  background: '#fef2f2',
+  border: '1px solid #fecaca',
+  color: '#b91c1c',
   fontSize: '0.9rem',
 };
 
 export default function App() {
-  // No API and no client storage yet (PLAN step 1). The board renders static
-  // placeholder cards; submitting the form shows where digesting will plug in.
-  const [notice, setNotice] = useState<string | null>(null);
+  // The board is server-backed (PLAN step 4): it loads from GET /api/cards and
+  // grows when POST /api/digest returns a new card. Persistence is in-memory in
+  // the API for now (issue #8 swaps in Postgres behind the same endpoints).
+  const [cards, setCards] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  function handleSubmit() {
-    setNotice('Digesting isn’t wired up yet — the digest API arrives in step 2. For now the board shows placeholder cards.');
+  useEffect(() => {
+    let active = true;
+    getCards()
+      .then((loaded) => active && setCards(loaded))
+      .catch((err: unknown) => active && setLoadError(err instanceof Error ? err.message : 'Could not load the board.'))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleSubmit(input: { url: string; text: string }) {
+    // Errors propagate to DigestForm, which shows them inline next to the form.
+    const card = await postDigest(input);
+    setCards((prev) => [card, ...prev]);
   }
 
   return (
@@ -33,8 +50,8 @@ export default function App() {
         </p>
       </header>
       <DigestForm onSubmit={handleSubmit} />
-      {notice !== null && <p style={noticeStyle}>{notice}</p>}
-      <BoardView cards={PLACEHOLDER_CARDS} />
+      {loadError !== null && <p style={noticeStyle}>{loadError}</p>}
+      {loading ? <p style={{ color: '#888' }}>Loading board…</p> : <BoardView cards={cards} />}
     </main>
   );
 }
