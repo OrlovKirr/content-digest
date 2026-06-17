@@ -15,7 +15,7 @@ new-project-ai/                  ← repo root (git lives here)
   app/                           ← Vite + React + TS frontend (legacy, ADR 002/003 stack)
   server/                        ← thin Hono backend proxy (fetch + Claude), legacy
   web/                           ← Vite + React + TS frontend (new ADR 004 stack)
-  api/                           ← FastAPI digest service (PLAN step 2, issue #7 — POST /api/digest)
+  api/                           ← FastAPI digest service (POST /api/digest, GET /api/cards) + Postgres persistence (PLAN steps 2–3, issues #7–#8)
 ```
 
 Governance files live at the repo root and **never** inside a package. Application code lives inside a package (`web/`, `api/`, or the legacy `app/`/`server/` during migration), **never** loose at the repo root. See [ADR 004](docs/decisions/004-new-stack-fastapi-vercel.md) for the migration.
@@ -48,6 +48,7 @@ Governance files live at the repo root and **never** inside a package. Applicati
 - [docs/requirements/feature-004-backend-claude.md](docs/requirements/feature-004-backend-claude.md) — Feature 004 spec (backend + Claude)
 - [docs/requirements/feature-005-web-shell.md](docs/requirements/feature-005-web-shell.md) — Feature 005 spec (web/ shell, PLAN step 1)
 - [docs/requirements/feature-006-fastapi-digest-api.md](docs/requirements/feature-006-fastapi-digest-api.md) — Feature 006 spec (FastAPI `/api/digest`, PLAN step 2)
+- [docs/requirements/feature-007-postgres-persistence.md](docs/requirements/feature-007-postgres-persistence.md) — Feature 007 spec (Postgres `cards` + `GET /api/cards`, PLAN step 3)
 - [docs/decisions/001-agent-structure.md](docs/decisions/001-agent-structure.md) — ADR: root-vs-`app/` split
 - [docs/decisions/002-content-digest-architecture.md](docs/decisions/002-content-digest-architecture.md) — ADR: Content Digest thin backend proxy (superseded by 004)
 - [docs/decisions/003-backend-dependencies.md](docs/decisions/003-backend-dependencies.md) — ADR: backend deps (Hono, Anthropic SDK, extractor; Opus 4.8) (superseded by 004)
@@ -59,7 +60,7 @@ Governance files live at the repo root and **never** inside a package. Applicati
 
 **Content Digest** is the app. Paste an article URL (or text) → a backend fetches + extracts the article and digests it → summary, key points, tags, suggested category → the result lands as a card on a **board with sections by topic**.
 
-**Stack migration in progress (ADR 004, issues #6–#11).** The repo is moving from the shipped stack — `app/` frontend + `server/` (Hono) backend + Claude + `localStorage` (Features 001–004) — to the target in [PLAN.md](docs/PLAN.md): `web/` frontend + `api/` (Python FastAPI on Vercel) + Postgres + OpenRouter. [ADR 004](docs/decisions/004-new-stack-fastapi-vercel.md) supersedes ADR 002/003 and the "no DB" constraint. **Step 1 (issue #6) shipped:** the `web/` shell — paste form + topic board + card, rendered from static placeholder data, **no API and no storage yet**. **Step 2 (issue #7) shipped:** the `api/` package — a Python FastAPI `POST /api/digest` that extracts (`httpx` + `readability-lxml`) and digests via **OpenRouter** (snake_case response; deterministic fallback when `OPENROUTER_API_KEY` is unset). Verified end-to-end on the fallback path (real URL + text); the live OpenRouter call is wired but unverified until a key is set in `api/.env`. Not yet wired to `web/` (#9) or persisted to Postgres (#8). The legacy `app/`+`server/` remain canonical and runnable until the deploy step removes them.
+**Stack migration in progress (ADR 004, issues #6–#11).** The repo is moving from the shipped stack — `app/` frontend + `server/` (Hono) backend + Claude + `localStorage` (Features 001–004) — to the target in [PLAN.md](docs/PLAN.md): `web/` frontend + `api/` (Python FastAPI on Vercel) + Postgres + OpenRouter. [ADR 004](docs/decisions/004-new-stack-fastapi-vercel.md) supersedes ADR 002/003 and the "no DB" constraint. **Step 1 (issue #6) shipped:** the `web/` shell — paste form + topic board + card, rendered from static placeholder data, **no API and no storage yet**. **Step 2 (issue #7) shipped:** the `api/` package — a Python FastAPI `POST /api/digest` that extracts (`httpx` + `readability-lxml`) and digests via **OpenRouter** (snake_case response; deterministic fallback when `OPENROUTER_API_KEY` is unset). Verified end-to-end on the fallback path (real URL + text); the live OpenRouter call is wired but unverified until a key is set in `api/.env`. **Step 3 (issue #8) shipped:** Postgres persistence — `api/db.py` (thin `asyncpg` shell), `api/card.py` (pure `Card` model + row/insert mappers), `api/schema.sql` (one `cards` table, `text[]` for key_points/tags, `id` uuid generated in Python). `POST /api/digest` now persists and returns the **full Card** (`id, url, title, summary, key_points, tags, category, created_at`); new `GET /api/cards` returns cards newest-first. Graceful degrade when `DATABASE_URL` is unset (POST returns an un-persisted Card, GET returns `[]`) — verified on that path; the live-DB path is wired but unverified here (no Postgres in env), covered by a `DATABASE_URL`-gated integration test. Not yet wired to `web/` (#9). The legacy `app/`+`server/` remain canonical and runnable until the deploy step removes them.
 
 **Ports:** legacy `app/` 5173 / `server/` 8787; new `web/` dev 5174 / preview 4174 (`strictPort`). `web/` takes 5173/4173 once `app/` is removed.
 
@@ -75,7 +76,7 @@ All from the repo root:
 - `npm run dev:web` / `npm run dev:server` — start just one
 - `npm run build` — type-check and build the frontend for production
 - `npm run test:run` — run vitest once across `app/` + `server/` (CI mode); Python `api/` tests run separately: `cd api && ./.venv/bin/python -m pytest`
-- `cd api && python3 -m venv .venv && ./.venv/bin/pip install -r requirements-dev.txt` — set up the FastAPI `api/`; run it with `./.venv/bin/python -m uvicorn index:app --port 8788`
+- `cd api && python3 -m venv .venv && ./.venv/bin/pip install -r requirements-dev.txt` — set up the FastAPI `api/` (includes `asyncpg`); run it with `./.venv/bin/python -m uvicorn index:app --port 8788`. Set `DATABASE_URL` in `api/.env` to persist cards; without it the API runs but does not persist. The `cards` table is created idempotently on first connect from `api/schema.sql`. The live-DB integration test runs only when `DATABASE_URL` is set: `cd api && DATABASE_URL=... ./.venv/bin/python -m pytest tests/test_db_integration.py`.
 - `npm run typecheck` — `tsc --noEmit` for `server/`
 - `npm run lint` — eslint (app); `npm run format` — prettier --write
 - `npm run setup` — install deps for both packages
@@ -86,7 +87,8 @@ All from the repo root:
 - [app/src/digest/httpDigester.ts](app/src/digest/httpDigester.ts) — frontend → `/api/digest`, with mock fallback
 - [server/src/server.ts](server/src/server.ts) — Hono app (`POST /api/digest`)
 - [server/src/digest/claude.ts](server/src/digest/claude.ts) — Claude call + model id (one-line swap)
-- [api/index.py](api/index.py) — FastAPI app (`POST /api/digest`); [api/digest.py](api/digest.py) — OpenRouter call + model default (one-line swap)
+- [api/index.py](api/index.py) — FastAPI app (`POST /api/digest`, `GET /api/cards`); [api/digest.py](api/digest.py) — OpenRouter call + model default (one-line swap)
+- [api/db.py](api/db.py) — Postgres `asyncpg` shell (pool, insert/fetch, `DATABASE_URL` guard); [api/card.py](api/card.py) — pure `Card` model + mappers; [api/schema.sql](api/schema.sql) — the `cards` DDL
 - [docs/constraints.md](docs/constraints.md) — guardrails
 
 ## Self-improvement log
@@ -99,6 +101,7 @@ Retrospectives live under [docs/retrospectives/](docs/retrospectives/):
 - [004-backend-claude.md](docs/retrospectives/004-backend-claude.md) — backend proxy + real fetch/Claude
 - [005-web-shell.md](docs/retrospectives/005-web-shell.md) — web/ shell + ADR 004 stack migration (PLAN step 1)
 - [006-fastapi-digest-api.md](docs/retrospectives/006-fastapi-digest-api.md) — Python FastAPI `/api/digest` + OpenRouter (PLAN step 2)
+- [007-postgres-persistence.md](docs/retrospectives/007-postgres-persistence.md) — Postgres `cards` + `GET /api/cards` (PLAN step 3)
 
 ## Escalation rules
 

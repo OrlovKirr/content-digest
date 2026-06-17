@@ -10,10 +10,10 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+import db
 from digest import openrouter_digest
 from extract import extract_article
 from fallback import fallback_digest
-from schema import DigestResponse
 
 
 def _load_env() -> None:
@@ -36,7 +36,20 @@ app = FastAPI(title="Content Digest API")
 
 @app.get("/api/health")
 async def health() -> dict:
-    return {"ok": True, "openrouter": bool(os.environ.get("OPENROUTER_API_KEY"))}
+    return {
+        "ok": True,
+        "openrouter": bool(os.environ.get("OPENROUTER_API_KEY")),
+        "database": bool(db.database_url()),
+    }
+
+
+@app.get("/api/cards")
+async def cards_endpoint():
+    """All persisted cards, newest first ([] when no DATABASE_URL is set)."""
+    try:
+        return await db.fetch_cards()
+    except Exception as err:
+        return JSONResponse({"error": str(err)}, status_code=500)
 
 
 @app.post("/api/digest")
@@ -75,4 +88,7 @@ async def digest_endpoint(request: Request):
     else:
         digest = fallback_digest(text, title)
 
-    return DigestResponse(**digest, title=title)
+    try:
+        return await db.insert_card(url, title, digest)
+    except Exception as err:
+        return JSONResponse({"error": str(err)}, status_code=500)
