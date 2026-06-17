@@ -25,7 +25,7 @@ Governance files live at the repo root and **never** inside a package. Applicati
 > **Working agreement**
 >
 > 1. No code without a spec. Every feature begins as a file under `docs/requirements/` (at repo root) and a failing test under `app/src/**/*.spec.ts(x)`.
-> 2. No architectural choice without an ADR under `docs/decisions/`.
+> 2. No architectural choice without an ADR under `docs/decisions/`. When an ADR supersedes another, add a `> **Status: Superseded by …**` banner to the top of each superseded ADR in the *same* change, so the decision trail links both ways (new→old and old→new).
 > 3. Read `docs/constraints.md` before proposing anything new. Surface conflicts, don't silently comply.
 > 4. The loop is: spec → failing test → minimal code → green test → commit. One concern per commit.
 > 5. Logic in pure modules, rendering in components. Specs target the logic. Add a DOM-testing layer (e.g. React Testing Library) only via an ADR when a real need appears.
@@ -106,6 +106,7 @@ Retrospectives live under [docs/retrospectives/](docs/retrospectives/):
 - [006-fastapi-digest-api.md](docs/retrospectives/006-fastapi-digest-api.md) — Python FastAPI `/api/digest` + OpenRouter (PLAN step 2)
 - [007-postgres-persistence.md](docs/retrospectives/007-postgres-persistence.md) — Postgres `cards` + `GET /api/cards` (PLAN step 3)
 - [008-wire-frontend-api.md](docs/retrospectives/008-wire-frontend-api.md) — wire `web/` ↔ `/api` (PLAN step 4; parallel-#8 collision + rebase)
+- [009-governance-supersede-adrs.md](docs/retrospectives/009-governance-supersede-adrs.md) — supersede ADR 002/003 banners + "no DB" lift (issue #11; substance already in ADR 004)
 
 ## Escalation rules
 
