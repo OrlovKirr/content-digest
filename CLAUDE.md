@@ -12,11 +12,13 @@ new-project-ai/                  ← repo root (git lives here)
   scripts/dev.mjs                ← zero-dep launcher for both dev servers
   .gitignore .editorconfig .nvmrc .env.example
   docs/                          ← requirements / decisions / retrospectives / constraints
-  app/                           ← Vite + React + TS frontend
-  server/                        ← thin Hono backend proxy (fetch + Claude), per ADR 002/003
+  app/                           ← Vite + React + TS frontend (legacy, ADR 002/003 stack)
+  server/                        ← thin Hono backend proxy (fetch + Claude), legacy
+  web/                           ← Vite + React + TS frontend (new ADR 004 stack)
+  api/                           ← FastAPI on Vercel (planned, PLAN step 2)
 ```
 
-Governance files live at the repo root and **never** inside a package. Application code lives inside `app/` (frontend) and `server/` (backend proxy), **never** loose at the repo root.
+Governance files live at the repo root and **never** inside a package. Application code lives inside a package (`web/`, `api/`, or the legacy `app/`/`server/` during migration), **never** loose at the repo root. See [ADR 004](docs/decisions/004-new-stack-fastapi-vercel.md) for the migration.
 
 ## How to work in this repo
 
@@ -44,15 +46,21 @@ Governance files live at the repo root and **never** inside a package. Applicati
 - [docs/requirements/feature-002-digest-pipeline.md](docs/requirements/feature-002-digest-pipeline.md) — Feature 002 spec (mock digest pipeline)
 - [docs/requirements/feature-003-board.md](docs/requirements/feature-003-board.md) — Feature 003 spec (board + sections)
 - [docs/requirements/feature-004-backend-claude.md](docs/requirements/feature-004-backend-claude.md) — Feature 004 spec (backend + Claude)
+- [docs/requirements/feature-005-web-shell.md](docs/requirements/feature-005-web-shell.md) — Feature 005 spec (web/ shell, PLAN step 1)
 - [docs/decisions/001-agent-structure.md](docs/decisions/001-agent-structure.md) — ADR: root-vs-`app/` split
-- [docs/decisions/002-content-digest-architecture.md](docs/decisions/002-content-digest-architecture.md) — ADR: Content Digest thin backend proxy
-- [docs/decisions/003-backend-dependencies.md](docs/decisions/003-backend-dependencies.md) — ADR: backend deps (Hono, Anthropic SDK, extractor; Opus 4.8)
+- [docs/decisions/002-content-digest-architecture.md](docs/decisions/002-content-digest-architecture.md) — ADR: Content Digest thin backend proxy (superseded by 004)
+- [docs/decisions/003-backend-dependencies.md](docs/decisions/003-backend-dependencies.md) — ADR: backend deps (Hono, Anthropic SDK, extractor; Opus 4.8) (superseded by 004)
+- [docs/decisions/004-new-stack-fastapi-vercel.md](docs/decisions/004-new-stack-fastapi-vercel.md) — ADR: adopt FastAPI/Vercel/Postgres/OpenRouter (supersedes 002/003)
 - [docs/constraints.md](docs/constraints.md) — what NOT to do
 - [docs/retrospectives/](docs/retrospectives/) — self-improvement log (see below)
 
 ## Current state
 
-**Content Digest** is the app. Paste an article URL (or text) → the **`server/` backend** fetches + extracts the article and digests it with Claude `claude-opus-4-8` → summary, key points, tags, suggested category → the result lands as a card on a **board with sections by topic**, persisted in `localStorage`. The frontend talks only to `POST /api/digest` (Vite-proxied) via an `HttpDigester`; when the backend is down or `ANTHROPIC_API_KEY` is unset, a deterministic **mock** (`app/src/digest/mockDigester.ts` / `server/src/digest/fallback.ts`) keeps it working. Features 001–004 shipped. The live Opus call is wired + typechecked but unverified until a key is set in `server/.env`.
+**Content Digest** is the app. Paste an article URL (or text) → a backend fetches + extracts the article and digests it → summary, key points, tags, suggested category → the result lands as a card on a **board with sections by topic**.
+
+**Stack migration in progress (ADR 004, issues #6–#11).** The repo is moving from the shipped stack — `app/` frontend + `server/` (Hono) backend + Claude + `localStorage` (Features 001–004) — to the target in [PLAN.md](docs/PLAN.md): `web/` frontend + `api/` (Python FastAPI on Vercel) + Postgres + OpenRouter. [ADR 004](docs/decisions/004-new-stack-fastapi-vercel.md) supersedes ADR 002/003 and the "no DB" constraint. **Step 1 (issue #6) shipped:** the `web/` shell — paste form + topic board + card, rendered from static placeholder data, **no API and no storage yet**. The legacy `app/`+`server/` remain canonical and runnable until the deploy step removes them; `web/` is the new frontend being built out.
+
+**Ports:** legacy `app/` 5173 / `server/` 8787; new `web/` dev 5174 / preview 4174 (`strictPort`). `web/` takes 5173/4173 once `app/` is removed.
 
 ## Dev server
 
@@ -86,6 +94,7 @@ Retrospectives live under [docs/retrospectives/](docs/retrospectives/):
 - [002-digest-pipeline.md](docs/retrospectives/002-digest-pipeline.md) — mock digest pipeline
 - [003-board.md](docs/retrospectives/003-board.md) — board with topic sections
 - [004-backend-claude.md](docs/retrospectives/004-backend-claude.md) — backend proxy + real fetch/Claude
+- [005-web-shell.md](docs/retrospectives/005-web-shell.md) — web/ shell + ADR 004 stack migration (PLAN step 1)
 
 ## Escalation rules
 
