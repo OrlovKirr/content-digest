@@ -1,5 +1,10 @@
 # ADR 003 — Feature 004 backend: framework, extractor, model, dependencies
 
+> **Status: Superseded by [ADR 004](004-new-stack-fastapi-vercel.md).** The Hono +
+> `@anthropic-ai/sdk` + `@extractus/article-extractor` + Opus 4.8 dependency choices recorded
+> below no longer apply; the target backend is Python FastAPI calling OpenRouter (extraction
+> via `httpx` + `readability-lxml`). See ADR 004. Retained as part of the decision trail.
+
 ## Context
 
 [ADR 002](002-content-digest-architecture.md) committed to a thin backend proxy (`POST /api/digest`) that owns article-text extraction and the Claude call, keeping the API key server-side. Feature 004 builds it. The escalation rule in `CLAUDE.md` ("a new runtime dependency is needed → ask + add an ADR before installing") applies: the backend needs several new dependencies. The user was asked and chose the model and extractor; framework was left to recommendation.

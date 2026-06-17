@@ -1,5 +1,11 @@
 # ADR 002 — Content Digest: thin backend proxy for fetch + AI
 
+> **Status: Superseded by [ADR 004](004-new-stack-fastapi-vercel.md).** The thin Node/Hono
+> proxy, the Claude API call, and the "no database / board state in `localStorage`" model
+> described below are no longer the target. ADR 004 adopts `web/` + `api/` (FastAPI on Vercel)
+> + Postgres + OpenRouter. Retained as part of the decision trail — read ADR 004 for the
+> current architecture.
+
 ## Context
 
 Feature "Content Digest": a user pastes an article link; the app extracts the text, an AI produces a short summary, key points, tags, and a suggested category; the result lands as a card on a board organised into topic sections.
