@@ -1,6 +1,12 @@
 # dependencies
 node_modules/
 
+# python (api/)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # build outputs
 dist/
 dist-ssr/
