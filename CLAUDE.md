@@ -38,6 +38,7 @@ Governance files live at the repo root and **never** inside a package. Applicati
 ## Documentation map
 
 - [docs/PRD.md](docs/PRD.md) — product requirements: problem, scenarios, scope, MVP criteria
+- [docs/PLAN.md](docs/PLAN.md) — forward-looking target stack + build steps (diverges from ADR 002/003)
 - [docs/requirements/overview.md](docs/requirements/overview.md) — goal, user, success criteria
 - [docs/requirements/feature-001-hello-world.md](docs/requirements/feature-001-hello-world.md) — Feature 001 spec
 - [docs/requirements/feature-002-digest-pipeline.md](docs/requirements/feature-002-digest-pipeline.md) — Feature 002 spec (mock digest pipeline)
