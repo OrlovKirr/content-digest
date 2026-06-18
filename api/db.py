@@ -25,8 +25,12 @@ _pool_lock = asyncio.Lock()
 
 
 def database_url() -> Optional[str]:
-    """The configured DATABASE_URL, or None when persistence is disabled."""
-    return os.environ.get("DATABASE_URL") or None
+    """The configured Postgres URL, or None when persistence is disabled.
+
+    Accepts DATABASE_URL (dev/tests) or POSTGRES_URL (Vercel Postgres / Neon
+    integration), in that order, so the same code runs locally and on Vercel.
+    """
+    return os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or None
 
 
 async def get_pool() -> asyncpg.Pool:
