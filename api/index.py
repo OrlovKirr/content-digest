@@ -5,7 +5,12 @@ a URL is given, then digest via OpenRouter (key present) or the deterministic
 fallback (key absent). Status codes mirror the Hono handler: 400 / 502 / 500.
 """
 import os
+import sys
 from pathlib import Path
+
+# Ensure sibling modules (db, digest, …) import on Vercel regardless of the
+# function's working directory.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
