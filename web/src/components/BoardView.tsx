@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import type { Card } from '../board/types';
 import { sectionsFromCards } from '../board/group';
 import { CardView } from './CardView';
@@ -7,33 +6,26 @@ interface Props {
   cards: Card[];
 }
 
-const grid: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-  gap: '1rem',
-};
-
 export function BoardView({ cards }: Props) {
   const sections = sectionsFromCards(cards);
 
   if (sections.length === 0) {
     return (
-      <p style={{ color: '#888' }}>
-        No cards yet — paste an article above and digest it to start your board.
+      <p className="state-message">
+        No cards yet — paste an article above to start your board.
       </p>
     );
   }
 
   return (
     <section>
-      <h2 style={{ margin: '0.5rem 0' }}>Board</h2>
       {sections.map((section) => (
-        <div key={section.category} style={{ marginBottom: '2rem' }}>
-          <h3 style={{ marginBottom: '0.75rem' }}>
-            {section.category}{' '}
-            <span style={{ color: '#9ca3af', fontWeight: 400 }}>({section.cards.length})</span>
-          </h3>
-          <div style={grid}>
+        <div key={section.category} className="board-section">
+          <div className="section-header">
+            <h2 className="section-title">{section.category}</h2>
+            <span className="section-count">{section.cards.length}</span>
+          </div>
+          <div className="card-grid">
             {section.cards.map((card) => (
               <CardView key={card.id} card={card} />
             ))}

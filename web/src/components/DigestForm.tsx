@@ -1,34 +1,10 @@
 import { useState } from 'react';
-import type { CSSProperties, FormEvent } from 'react';
+import type { FormEvent } from 'react';
 
 interface Props {
   /** Resolves when the card is created; rejects (with a readable message) on failure. */
   onSubmit: (input: { url: string; text: string }) => Promise<void>;
 }
-
-const field: CSSProperties = {
-  padding: '0.6rem 0.7rem',
-  border: '1px solid #ccc',
-  borderRadius: 8,
-  font: 'inherit',
-};
-
-const button: CSSProperties = {
-  padding: '0.6rem 1rem',
-  border: 'none',
-  borderRadius: 8,
-  background: '#2d6cdf',
-  color: '#fff',
-  font: 'inherit',
-  cursor: 'pointer',
-  justifySelf: 'start',
-};
-
-const buttonBusy: CSSProperties = {
-  ...button,
-  background: '#93b4ec',
-  cursor: 'progress',
-};
 
 export function DigestForm({ onSubmit }: Props) {
   const [url, setUrl] = useState('');
@@ -39,14 +15,13 @@ export function DigestForm({ onSubmit }: Props) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (url.trim().length === 0 && text.trim().length === 0) {
-      setError('Paste an article URL or the article text.');
+      setError('Paste an article URL or the article text to get started.');
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
       await onSubmit({ url, text });
-      // Clear only on success so a failed submit keeps the user's input.
       setUrl('');
       setText('');
     } catch (err) {
@@ -57,27 +32,30 @@ export function DigestForm({ onSubmit }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.6rem', margin: '1.5rem 0' }}>
+    <form onSubmit={handleSubmit} className="digest-form">
       <input
         type="url"
-        placeholder="https://example.com/article  (the server will fetch & extract it)"
+        placeholder="Paste an article URL…"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         disabled={submitting}
-        style={field}
+        className="form-field form-field-url"
       />
+      <div className="form-divider">or</div>
       <textarea
-        placeholder="…or paste the article text directly"
+        placeholder="Paste article text directly…"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        rows={6}
+        rows={5}
         disabled={submitting}
-        style={{ ...field, resize: 'vertical' }}
+        className="form-field form-field-text"
       />
-      {error !== null && <span style={{ color: '#c0392b' }}>{error}</span>}
-      <button type="submit" disabled={submitting} style={submitting ? buttonBusy : button}>
-        {submitting ? 'Digesting…' : 'Digest & add to board'}
-      </button>
+      <div className="form-footer">
+        <span className="form-error">{error}</span>
+        <button type="submit" disabled={submitting} className="submit-btn">
+          {submitting ? 'Processing…' : 'Digest'}
+        </button>
+      </div>
     </form>
   );
 }
